@@ -6,6 +6,8 @@
     <title>Pitch Tracker</title>
     <style>
         body { font-family: sans-serif; text-align: center; padding: 20px; touch-action: manipulation; }
+        .teams { margin-bottom: 20px; }
+        input { padding: 10px; width: 45%; margin: 5px; text-align: center; }
         .stats { font-size: 24px; margin: 10px 0; }
         .total-stats { font-size: 20px; color: #555; margin-bottom: 20px; }
         .button-container { display: flex; flex-direction: column; gap: 15px; }
@@ -18,6 +20,11 @@
 </head>
 <body>
     <h3>Pitch Tracker</h3>
+    <div class="teams">
+        <input type="text" id="homeTeam" placeholder="Home Team" oninput="saveTeams()">
+        <input type="text" id="awayTeam" placeholder="Away Team" oninput="saveTeams()">
+    </div>
+
     <div class="stats">Current: S: <span id="s">0</span> | B: <span id="b">0</span></div>
     <div class="total-stats">Totals: S: <span id="ts">0</span> | B: <span id="tb">0</span></div>
     
@@ -32,12 +39,20 @@
     <button id="resetBtn" onclick="reset()">Reset Stats</button>
 
     <script>
+        // Load data
         let s = parseInt(localStorage.getItem('s')) || 0;
         let b = parseInt(localStorage.getItem('b')) || 0;
         let ts = parseInt(localStorage.getItem('ts')) || 0;
         let tb = parseInt(localStorage.getItem('tb')) || 0;
         let so = parseInt(localStorage.getItem('so')) || 0;
         let bb = parseInt(localStorage.getItem('bb')) || 0;
+        document.getElementById('homeTeam').value = localStorage.getItem('homeTeam') || '';
+        document.getElementById('awayTeam').value = localStorage.getItem('awayTeam') || '';
+
+        function saveTeams() {
+            localStorage.setItem('homeTeam', document.getElementById('homeTeam').value);
+            localStorage.setItem('awayTeam', document.getElementById('awayTeam').value);
+        }
 
         function update() {
             document.getElementById('s').innerText = s;
@@ -57,25 +72,27 @@
         update();
 
         function add(type) {
-            if(type === 's') { 
-                s++; ts++; 
-                if(s === 3) { so++; s = 0; b = 0; } 
-            } else { 
-                b++; tb++; 
-                if(b === 4) { bb++; s = 0; b = 0; } 
-            }
+            if(type === 's') { s++; ts++; if(s === 3) { so++; s = 0; b = 0; } } 
+            else { b++; tb++; if(b === 4) { bb++; s = 0; b = 0; } }
             update();
         }
         
         function reset() { 
             if(confirm("Reset all stats?")) {
                 s=0; b=0; ts=0; tb=0; so=0; bb=0; 
+                document.getElementById('homeTeam').value = '';
+                document.getElementById('awayTeam').value = '';
+                localStorage.removeItem('homeTeam');
+                localStorage.removeItem('awayTeam');
                 update(); 
             }
         }
 
         function exportData() {
+            const home = document.getElementById('homeTeam').value || "Home";
+            const away = document.getElementById('awayTeam').value || "Away";
             const data = [
+                ["Teams", home + " vs " + away],
                 ["Stat", "Value"],
                 ["Total Strikes", ts],
                 ["Total Balls", tb],
