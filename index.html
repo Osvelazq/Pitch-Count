@@ -9,12 +9,13 @@
         .teams { margin-bottom: 20px; }
         input { padding: 10px; width: 45%; margin: 5px; text-align: center; }
         .stats { font-size: 24px; margin: 10px 0; }
-        .total-stats { font-size: 20px; color: #555; margin-bottom: 20px; }
-        .button-container { display: flex; flex-direction: column; gap: 15px; }
-        button { padding: 30px; font-size: 24px; border: none; border-radius: 10px; color: white; width: 100%; }
+        .button-container { display: flex; flex-direction: column; gap: 10px; }
+        button { padding: 20px; font-size: 20px; border: none; border-radius: 10px; color: white; width: 100%; }
         #strikeBtn { background-color: #d9534f; } 
         #ballBtn { background-color: #5cb85c; }   
-        #resetBtn { background-color: #333; margin-top: 20px; }
+        #hitBtn { background-color: #f0ad4e; }
+        #inningBtn { background-color: #5bc0de; }
+        #resetBtn { background-color: #333; margin-top: 15px; }
         #exportBtn { background-color: #007bff; margin-top: 10px; }
     </style>
 </head>
@@ -25,65 +26,69 @@
         <input type="text" id="awayTeam" placeholder="Away Team" oninput="saveTeams()">
     </div>
 
-    <div class="stats">Current: S: <span id="s">0</span> | B: <span id="b">0</span></div>
-    <div class="total-stats">Totals: S: <span id="ts">0</span> | B: <span id="tb">0</span></div>
+    <div class="stats">S: <span id="s">0</span> | B: <span id="b">0</span></div>
+    <div class="stats">Hits: <span id="h">0</span> | Innings: <span id="ip">0</span></div>
     
     <div class="button-container">
         <button id="strikeBtn" onclick="add('s')">STRIKE</button>
         <button id="ballBtn" onclick="add('b')">BALL</button>
+        <button id="hitBtn" onclick="add('h')">HIT</button>
+        <button id="inningBtn" onclick="add('ip')">+1/3 Inning</button>
     </div>
 
-    <p>Strikeouts: <span id="so">0</span> | Walks: <span id="bb">0</span></p>
+    <p>SO: <span id="so">0</span> | BB: <span id="bb">0</span></p>
     
     <button id="exportBtn" onclick="exportData()">Export to CSV</button>
     <button id="resetBtn" onclick="reset()">Reset Stats</button>
 
     <script>
+        let s=0, b=0, h=0, ip=0, so=0, bb=0;
         // Load data
-        let s = parseInt(localStorage.getItem('s')) || 0;
-        let b = parseInt(localStorage.getItem('b')) || 0;
-        let ts = parseInt(localStorage.getItem('ts')) || 0;
-        let tb = parseInt(localStorage.getItem('tb')) || 0;
-        let so = parseInt(localStorage.getItem('so')) || 0;
-        let bb = parseInt(localStorage.getItem('bb')) || 0;
+        s = parseInt(localStorage.getItem('s')) || 0;
+        b = parseInt(localStorage.getItem('b')) || 0;
+        h = parseInt(localStorage.getItem('h')) || 0;
+        ip = parseFloat(localStorage.getItem('ip')) || 0;
+        so = parseInt(localStorage.getItem('so')) || 0;
+        bb = parseInt(localStorage.getItem('bb')) || 0;
         document.getElementById('homeTeam').value = localStorage.getItem('homeTeam') || '';
         document.getElementById('awayTeam').value = localStorage.getItem('awayTeam') || '';
-
-        function saveTeams() {
-            localStorage.setItem('homeTeam', document.getElementById('homeTeam').value);
-            localStorage.setItem('awayTeam', document.getElementById('awayTeam').value);
-        }
 
         function update() {
             document.getElementById('s').innerText = s;
             document.getElementById('b').innerText = b;
-            document.getElementById('ts').innerText = ts;
-            document.getElementById('tb').innerText = tb;
+            document.getElementById('h').innerText = h;
+            document.getElementById('ip').innerText = ip.toFixed(1);
             document.getElementById('so').innerText = so;
             document.getElementById('bb').innerText = bb;
             
             localStorage.setItem('s', s);
             localStorage.setItem('b', b);
-            localStorage.setItem('ts', ts);
-            localStorage.setItem('tb', tb);
+            localStorage.setItem('h', h);
+            localStorage.setItem('ip', ip);
             localStorage.setItem('so', so);
             localStorage.setItem('bb', bb);
         }
         update();
 
         function add(type) {
-            if(type === 's') { s++; ts++; if(s === 3) { so++; s = 0; b = 0; } } 
-            else { b++; tb++; if(b === 4) { bb++; s = 0; b = 0; } }
+            if(type === 's') { s++; if(s === 3) { so++; s=0; b=0; } }
+            else if(type === 'b') { b++; if(b === 4) { bb++; s=0; b=0; } }
+            else if(type === 'h') { h++; }
+            else if(type === 'ip') { ip += 0.33; }
             update();
         }
-        
+
+        function saveTeams() {
+            localStorage.setItem('homeTeam', document.getElementById('homeTeam').value);
+            localStorage.setItem('awayTeam', document.getElementById('awayTeam').value);
+        }
+
         function reset() { 
             if(confirm("Reset all stats?")) {
-                s=0; b=0; ts=0; tb=0; so=0; bb=0; 
+                s=0; b=0; h=0; ip=0; so=0; bb=0;
+                localStorage.clear();
                 document.getElementById('homeTeam').value = '';
                 document.getElementById('awayTeam').value = '';
-                localStorage.removeItem('homeTeam');
-                localStorage.removeItem('awayTeam');
                 update(); 
             }
         }
@@ -93,11 +98,8 @@
             const away = document.getElementById('awayTeam').value || "Away";
             const data = [
                 ["Teams", home + " vs " + away],
-                ["Stat", "Value"],
-                ["Total Strikes", ts],
-                ["Total Balls", tb],
-                ["Strikeouts", so],
-                ["Walks", bb]
+                ["Strikes", s], ["Balls", b], ["Hits", h],
+                ["Innings", ip.toFixed(1)], ["Strikeouts", so], ["Walks", bb]
             ];
             let csvContent = "data:text/csv;charset=utf-8," + data.map(e => e.join(",")).join("\n");
             const link = document.createElement("a");
@@ -110,4 +112,3 @@
     </script>
 </body>
 </html>
-
