@@ -6,16 +6,10 @@
     <title>Pitch Tracker</title>
     <style>
         body { font-family: sans-serif; text-align: center; padding: 20px; touch-action: manipulation; }
-        .stats { font-size: 32px; margin: 20px 0; font-weight: bold; }
+        .stats { font-size: 24px; margin: 10px 0; }
+        .total-stats { font-size: 20px; color: #555; margin-bottom: 20px; }
         .button-container { display: flex; flex-direction: column; gap: 15px; }
-        button { 
-            padding: 30px; 
-            font-size: 24px; 
-            border: none; 
-            border-radius: 10px; 
-            color: white; 
-            width: 100%;
-        }
+        button { padding: 30px; font-size: 24px; border: none; border-radius: 10px; color: white; width: 100%; }
         #strikeBtn { background-color: #d9534f; } 
         #ballBtn { background-color: #5cb85c; }   
         #resetBtn { background-color: #333; margin-top: 20px; }
@@ -24,7 +18,8 @@
 </head>
 <body>
     <h3>Pitch Tracker</h3>
-    <div class="stats">S: <span id="s">0</span> | B: <span id="b">0</span></div>
+    <div class="stats">Current: S: <span id="s">0</span> | B: <span id="b">0</span></div>
+    <div class="total-stats">Totals: S: <span id="ts">0</span> | B: <span id="tb">0</span></div>
     
     <div class="button-container">
         <button id="strikeBtn" onclick="add('s')">STRIKE</button>
@@ -39,17 +34,23 @@
     <script>
         let s = parseInt(localStorage.getItem('s')) || 0;
         let b = parseInt(localStorage.getItem('b')) || 0;
+        let ts = parseInt(localStorage.getItem('ts')) || 0;
+        let tb = parseInt(localStorage.getItem('tb')) || 0;
         let so = parseInt(localStorage.getItem('so')) || 0;
         let bb = parseInt(localStorage.getItem('bb')) || 0;
 
         function update() {
             document.getElementById('s').innerText = s;
             document.getElementById('b').innerText = b;
+            document.getElementById('ts').innerText = ts;
+            document.getElementById('tb').innerText = tb;
             document.getElementById('so').innerText = so;
             document.getElementById('bb').innerText = bb;
             
             localStorage.setItem('s', s);
             localStorage.setItem('b', b);
+            localStorage.setItem('ts', ts);
+            localStorage.setItem('tb', tb);
             localStorage.setItem('so', so);
             localStorage.setItem('bb', bb);
         }
@@ -57,10 +58,10 @@
 
         function add(type) {
             if(type === 's') { 
-                s++; 
+                s++; ts++; 
                 if(s === 3) { so++; s = 0; b = 0; } 
             } else { 
-                b++; 
+                b++; tb++; 
                 if(b === 4) { bb++; s = 0; b = 0; } 
             }
             update();
@@ -68,7 +69,7 @@
         
         function reset() { 
             if(confirm("Reset all stats?")) {
-                s = 0; b = 0; so = 0; bb = 0; 
+                s=0; b=0; ts=0; tb=0; so=0; bb=0; 
                 update(); 
             }
         }
@@ -76,15 +77,14 @@
         function exportData() {
             const data = [
                 ["Stat", "Value"],
-                ["Strikes", s],
-                ["Balls", b],
+                ["Total Strikes", ts],
+                ["Total Balls", tb],
                 ["Strikeouts", so],
                 ["Walks", bb]
             ];
             let csvContent = "data:text/csv;charset=utf-8," + data.map(e => e.join(",")).join("\n");
-            const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
+            link.setAttribute("href", encodeURI(csvContent));
             link.setAttribute("download", "pitch_data.csv");
             document.body.appendChild(link);
             link.click();
