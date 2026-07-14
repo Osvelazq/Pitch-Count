@@ -7,10 +7,12 @@
     <style>
         body { font-family: sans-serif; text-align: center; padding: 20px; touch-action: manipulation; }
         .teams { margin-bottom: 20px; }
-        input { padding: 10px; width: 45%; margin: 5px; text-align: center; }
+        .row-input { display: flex; justify-content: center; gap: 5px; margin-bottom: 5px; }
+        input[type="text"] { padding: 10px; width: 60%; }
+        input[type="number"] { padding: 10px; width: 20%; text-align: center; }
         .stats { font-size: 20px; margin: 8px 0; font-weight: bold; }
         .button-container { display: flex; flex-direction: column; gap: 10px; }
-        button { padding: 20px; font-size: 18px; border: none; border-radius: 8px; color: white; width: 100%; }
+        button { padding: 25px; font-size: 20px; border: none; border-radius: 8px; color: white; width: 100%; }
         .row { display: flex; gap: 10px; margin-top: 15px; }
         .row button { padding: 15px; font-size: 16px; }
         #strikeBtn { background-color: #d9534f; } 
@@ -24,8 +26,14 @@
 <body>
     <h3>Pitch Tracker</h3>
     <div class="teams">
-        <input type="text" id="homeTeam" placeholder="Home Team" oninput="saveTeams()">
-        <input type="text" id="awayTeam" placeholder="Away Team" oninput="saveTeams()">
+        <div class="row-input">
+            <input type="text" id="homeTeam" placeholder="Home" oninput="saveData()">
+            <input type="number" id="homeScore" placeholder="0" oninput="saveData()">
+        </div>
+        <div class="row-input">
+            <input type="text" id="awayTeam" placeholder="Away" oninput="saveData()">
+            <input type="number" id="awayScore" placeholder="0" oninput="saveData()">
+        </div>
     </div>
 
     <div class="stats">Current: S:<span id="s">0</span> | B:<span id="b">0</span></div>
@@ -47,6 +55,7 @@
     </div>
 
     <script>
+        // Load data
         let s = parseInt(localStorage.getItem('s')) || 0;
         let b = parseInt(localStorage.getItem('b')) || 0;
         let ts = parseInt(localStorage.getItem('ts')) || 0;
@@ -57,7 +66,9 @@
         let bb = parseInt(localStorage.getItem('bb')) || 0;
 
         document.getElementById('homeTeam').value = localStorage.getItem('homeTeam') || '';
+        document.getElementById('homeScore').value = localStorage.getItem('homeScore') || '';
         document.getElementById('awayTeam').value = localStorage.getItem('awayTeam') || '';
+        document.getElementById('awayScore').value = localStorage.getItem('awayScore') || '';
 
         function update() {
             document.getElementById('s').innerText = s;
@@ -68,11 +79,18 @@
             document.getElementById('ip').innerText = ip.toFixed(1);
             document.getElementById('so').innerText = so;
             document.getElementById('bb').innerText = bb;
-            
+            saveData();
+        }
+
+        function saveData() {
             localStorage.setItem('s', s); localStorage.setItem('b', b);
             localStorage.setItem('ts', ts); localStorage.setItem('tb', tb);
             localStorage.setItem('h', h); localStorage.setItem('ip', ip);
             localStorage.setItem('so', so); localStorage.setItem('bb', bb);
+            localStorage.setItem('homeTeam', document.getElementById('homeTeam').value);
+            localStorage.setItem('homeScore', document.getElementById('homeScore').value);
+            localStorage.setItem('awayTeam', document.getElementById('awayTeam').value);
+            localStorage.setItem('awayScore', document.getElementById('awayScore').value);
         }
 
         function add(type) {
@@ -83,11 +101,6 @@
             update();
         }
 
-        function saveTeams() {
-            localStorage.setItem('homeTeam', document.getElementById('homeTeam').value);
-            localStorage.setItem('awayTeam', document.getElementById('awayTeam').value);
-        }
-
         function reset() { 
             if(confirm("Reset all stats?")) {
                 localStorage.clear();
@@ -96,10 +109,13 @@
         }
 
         function exportData() {
-            const home = document.getElementById('homeTeam').value || "Home";
-            const away = document.getElementById('awayTeam').value || "Away";
+            const hTeam = document.getElementById('homeTeam').value || "Home";
+            const hScore = document.getElementById('homeScore').value || "0";
+            const aTeam = document.getElementById('awayTeam').value || "Away";
+            const aScore = document.getElementById('awayScore').value || "0";
             const data = [
-                ["Teams", home + " vs " + away],
+                ["Teams", hTeam + " vs " + aTeam],
+                ["Score", hScore + " - " + aScore],
                 ["Stat", "Value"],
                 ["Total Strikes", ts], ["Total Balls", tb],
                 ["Hits", h], ["Innings", ip.toFixed(1)],
