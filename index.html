@@ -74,7 +74,7 @@
         function add(type) {
             if(type === 's') { s++; ts++; if(s >= 3) { so++; s=0; b=0; } }
             else if(type === 'b') { b++; tb++; if(b >= 4) { bb++; s=0; b=0; } }
-            else if(type === 'h') { h++; }
+            else if(type === 'h') { h++; s=0; b=0; }
             else if(type === 'ip') { ip += 0.33; }
             update();
         }
