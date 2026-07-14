@@ -8,15 +8,17 @@
         body { font-family: sans-serif; text-align: center; padding: 20px; touch-action: manipulation; }
         .teams { margin-bottom: 20px; }
         input { padding: 10px; width: 45%; margin: 5px; text-align: center; }
-        .stats { font-size: 24px; margin: 10px 0; font-weight: bold; }
+        .stats { font-size: 20px; margin: 8px 0; font-weight: bold; }
         .button-container { display: flex; flex-direction: column; gap: 10px; }
-        button { padding: 25px; font-size: 20px; border: none; border-radius: 10px; color: white; width: 100%; }
+        button { padding: 20px; font-size: 18px; border: none; border-radius: 8px; color: white; width: 100%; }
+        .row { display: flex; gap: 10px; margin-top: 15px; }
+        .row button { padding: 15px; font-size: 16px; }
         #strikeBtn { background-color: #d9534f; } 
         #ballBtn { background-color: #5cb85c; }   
         #hitBtn { background-color: #f0ad4e; }
         #inningBtn { background-color: #5bc0de; }
-        #resetBtn { background-color: #333; margin-top: 15px; }
-        #exportBtn { background-color: #007bff; margin-top: 10px; }
+        #exportBtn { background-color: #007bff; flex: 1; }
+        #resetBtn { background-color: #333; flex: 1; }
     </style>
 </head>
 <body>
@@ -26,8 +28,8 @@
         <input type="text" id="awayTeam" placeholder="Away Team" oninput="saveTeams()">
     </div>
 
-    <div class="stats">Current: S: <span id="s">0</span> | B: <span id="b">0</span></div>
-    <div class="stats">Total: S: <span id="ts">0</span> | B: <span id="tb">0</span></div>
+    <div class="stats">Current: S:<span id="s">0</span> | B:<span id="b">0</span></div>
+    <div class="stats">Total: S:<span id="ts">0</span> | B:<span id="tb">0</span></div>
     <div class="stats">Hits: <span id="h">0</span> | IP: <span id="ip">0.0</span></div>
     
     <div class="button-container">
@@ -39,8 +41,10 @@
 
     <p>SO: <span id="so">0</span> | BB: <span id="bb">0</span></p>
     
-    <button id="exportBtn" onclick="exportData()">Export to CSV</button>
-    <button id="resetBtn" onclick="reset()">Reset Stats</button>
+    <div class="row">
+        <button id="exportBtn" onclick="exportData()">Export</button>
+        <button id="resetBtn" onclick="reset()">Reset</button>
+    </div>
 
     <script>
         let s = parseInt(localStorage.getItem('s')) || 0;
