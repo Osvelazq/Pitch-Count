@@ -1,0 +1,8 @@
+{
+  "name": "Pitch Tracker",
+  "short_name": "PitchTracker",
+  "start_url": "index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#333333"
+}
