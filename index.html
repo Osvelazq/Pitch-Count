@@ -4,6 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pitch Tracker</title>
+    <link rel="manifest" href="manifest.json">
+<script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js');
+  }
+</script>
+
     <style>
         body { font-family: sans-serif; text-align: center; padding: 20px; touch-action: manipulation; }
         .teams { margin-bottom: 20px; }
