@@ -1,10 +1,41 @@
-const cacheName = 'pitch-tracker-v1';
-const filesToCache = ['index.html', 'manifest.json'];
+const CACHE = 'pitch-tracker-v2';
+const ASSETS = [
+  './',
+  './index.html',
+  './styles.css',
+  './manifest.json',
+  './js/core.js',
+  './js/app.js',
+];
 
-self.addEventListener('install', e => {
-  e.waitUntil(caches.open(cacheName).then(cache => cache.addAll(filesToCache)));
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE).then((cache) => cache.addAll(ASSETS)).then(() => self.skipWaiting())
+  );
 });
 
-self.addEventListener('fetch', e => {
-  e.respondWith(caches.match(e.request).then(response => response || fetch(e.request)));
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
+    ).then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('fetch', (event) => {
+  const req = event.request;
+  if (req.method !== 'GET') return;
+
+  event.respondWith(
+    caches.match(req).then((cached) => {
+      const networked = fetch(req)
+        .then((res) => {
+          const copy = res.clone();
+          caches.open(CACHE).then((cache) => cache.put(req, copy));
+          return res;
+        })
+        .catch(() => cached);
+      return cached || networked;
+    })
+  );
 });
