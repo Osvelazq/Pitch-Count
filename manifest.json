@@ -1,8 +1,11 @@
 {
   "name": "Pitch Tracker",
   "short_name": "PitchTracker",
-  "start_url": "index.html",
+  "description": "Palm-friendly softball pitch tracker for the stands",
+  "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#333333"
+  "background_color": "#f3f5f2",
+  "theme_color": "#2f5d50",
+  "orientation": "any",
+  "icons": []
 }

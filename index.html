@@ -1,143 +1,199 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pitch Tracker</title>
-    <link rel="manifest" href="manifest.json">
-<script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('sw.js');
-  }
-</script>
-
-    <style>
-        body { font-family: sans-serif; text-align: center; padding: 20px; touch-action: manipulation; }
-        .teams { margin-bottom: 20px; }
-        .row-input { display: flex; justify-content: center; gap: 5px; margin-bottom: 5px; }
-        input[type="text"] { padding: 10px; width: 60%; }
-        input[type="number"] { padding: 10px; width: 20%; text-align: center; }
-        .stats { font-size: 20px; margin: 8px 0; font-weight: bold; }
-        .button-container { display: flex; flex-direction: column; gap: 10px; }
-        button { padding: 25px; font-size: 20px; border: none; border-radius: 8px; color: white; width: 100%; }
-        .row { display: flex; gap: 10px; margin-top: 15px; }
-        .row button { padding: 15px; font-size: 16px; }
-        #strikeBtn { background-color: #d9534f; } 
-        #ballBtn { background-color: #5cb85c; }   
-        #hitBtn { background-color: #f0ad4e; }
-        #inningBtn { background-color: #5bc0de; }
-        #exportBtn { background-color: #007bff; flex: 1; }
-        #resetBtn { background-color: #333; flex: 1; }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#2f5d50">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>Pitch Tracker</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <h3>Pitch Tracker</h3>
-    <div class="teams">
-        <div class="row-input">
-            <input type="text" id="homeTeam" placeholder="Home" oninput="saveData()">
-            <input type="number" id="homeScore" placeholder="0" oninput="saveData()">
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <h1>Pitch Tracker</h1>
+        <p>One-tap from the stands</p>
+      </div>
+      <button type="button" class="icon-btn" id="menuBtn" aria-label="Menu">Menu</button>
+    </header>
+
+    <section class="panel">
+      <div class="meta-grid">
+        <label class="span-2">Pitcher
+          <input id="pitcher" type="text" autocomplete="off" placeholder="Pitcher name">
+        </label>
+        <label>Home
+          <input id="homeTeam" type="text" autocomplete="off" placeholder="Home">
+        </label>
+        <label>Away
+          <input id="awayTeam" type="text" autocomplete="off" placeholder="Away">
+        </label>
+        <label>Home score
+          <input id="homeScore" type="number" inputmode="numeric" min="0" step="1">
+        </label>
+        <label>Away score
+          <input id="awayScore" type="number" inputmode="numeric" min="0" step="1">
+        </label>
+      </div>
+      <div class="scoreboard" aria-live="polite">
+        <div class="score-side">
+          <div class="name" id="homeName">Home</div>
+          <div class="runs" id="homeRuns">0</div>
         </div>
-        <div class="row-input">
-            <input type="text" id="awayTeam" placeholder="Away" oninput="saveData()">
-            <input type="number" id="awayScore" placeholder="0" oninput="saveData()">
+        <div class="score-mid">SCORE</div>
+        <div class="score-side away">
+          <div class="name" id="awayName">Away</div>
+          <div class="runs" id="awayRuns">0</div>
         </div>
+      </div>
+    </section>
+
+    <div class="live-track">
+      <section class="panel">
+        <div class="live">
+          <div class="chip">
+            <span class="k">Count</span>
+            <span class="v"><span id="countBalls">0</span>–<span id="countStrikes">0</span></span>
+          </div>
+          <div class="chip">
+            <span class="k">Inning</span>
+            <span class="v" id="inningVal">1▲</span>
+          </div>
+          <div class="chip">
+            <span class="k">Outs</span>
+            <span class="v"><span class="outs-dots" id="outsDots" aria-label="outs"></span></span>
+          </div>
+          <div class="chip">
+            <span class="k">Pitches</span>
+            <span class="v" id="pitchTotal">0</span>
+          </div>
+        </div>
+        <div class="last-event">Last: <strong id="lastEvent">—</strong> · IP <strong id="ipVal">0.0</strong></div>
+      </section>
+
+      <section class="panel pending" id="pendingPanel">
+        <h2 id="pendingTitle">Plate appearance</h2>
+        <div class="pa-grid">
+          <button type="button" data-pa="strikeout">K</button>
+          <button type="button" data-pa="walk">BB</button>
+          <button type="button" data-pa="hbp">HBP</button>
+          <button type="button" data-pa="out">Out</button>
+          <button type="button" data-pa="single">1B</button>
+          <button type="button" data-pa="double">2B</button>
+          <button type="button" data-pa="triple">3B</button>
+          <button type="button" data-pa="home_run">HR</button>
+          <button type="button" data-pa="error">E</button>
+          <button type="button" data-pa="fielders_choice">FC</button>
+          <button type="button" data-pa="sacrifice">SAC</button>
+        </div>
+        <div class="runs-row">
+          <span>Runs on play (optional)</span>
+          <div class="runs-controls">
+            <button type="button" id="runsMinus" aria-label="Fewer runs">−</button>
+            <output id="runsOut">0</output>
+            <button type="button" id="runsPlus" aria-label="More runs">+</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="pitch-grid">
+          <button type="button" class="ball" data-pitch="ball">BALL</button>
+          <button type="button" class="called" data-pitch="called_strike">CALLED</button>
+          <button type="button" class="swing" data-pitch="swinging_strike">SWING</button>
+          <button type="button" class="foul" data-pitch="foul">FOUL</button>
+          <button type="button" class="inplay" data-pitch="in_play">IN PLAY</button>
+          <button type="button" class="unknown" data-pitch="unknown">UNKNOWN</button>
+        </div>
+        <div class="actions">
+          <button type="button" class="undo" id="undoBtn">Undo</button>
+          <button type="button" id="endAbBtn">End AB</button>
+          <button type="button" id="locateBtn">Zone</button>
+        </div>
+        <div class="actions" style="grid-template-columns:1fr 1fr;margin-top:8px">
+          <button type="button" id="statsBtn">Stats</button>
+          <button type="button" id="menuBtn2">Export</button>
+        </div>
+      </section>
     </div>
+  </div>
 
-    <div class="stats">Current: S:<span id="s">0</span> | B:<span id="b">0</span></div>
-    <div class="stats">Total: S:<span id="ts">0</span> | B:<span id="tb">0</span></div>
-    <div class="stats">Hits: <span id="h">0</span> | IP: <span id="ip">0.0</span></div>
-    
-    <div class="button-container">
-        <button id="strikeBtn" onclick="add('s')">STRIKE</button>
-        <button id="ballBtn" onclick="add('b')">BALL</button>
-        <button id="hitBtn" onclick="add('h')">HIT</button>
-        <button id="inningBtn" onclick="add('ip')">+1/3 Inning</button>
+  <div class="flash" id="flash" role="status" aria-live="polite"></div>
+
+  <!-- Zone / optional detail -->
+  <div class="sheet-backdrop" id="zoneSheet" role="dialog" aria-modal="true" aria-labelledby="zoneTitle">
+    <div class="sheet">
+      <h2 id="zoneTitle">Where was it?</h2>
+      <p class="hint">Catcher’s view. Skip if you didn’t see it clearly.</p>
+      <div class="zone-grid" id="zoneGrid"></div>
+      <p class="hint">Pitch type (optional)</p>
+      <div class="type-row" id="typeRow"></div>
+      <div class="sheet-actions">
+        <button type="button" id="zoneSkip">Skip</button>
+        <button type="button" data-close="zoneSheet">Close</button>
+      </div>
     </div>
+  </div>
 
-    <p>SO: <span id="so">0</span> | BB: <span id="bb">0</span></p>
-    
-    <div class="row">
-        <button id="exportBtn" onclick="exportData()">Export</button>
-        <button id="resetBtn" onclick="reset()">Reset</button>
+  <!-- Stats -->
+  <div class="sheet-backdrop" id="statsSheet" role="dialog" aria-modal="true">
+    <div class="sheet">
+      <h2>Game stats</h2>
+      <p class="hint">Only honest metrics from what you logged.</p>
+      <div class="stats-list">
+        <div><span class="label">Total pitches</span><span id="statPitches">0</span></div>
+        <div><span class="label">Strike %</span><span id="statStrikePct">—</span></div>
+        <div><span class="label">First-pitch strike %</span><span id="statFpStrike">—</span></div>
+        <div><span class="label">Strikeouts</span><span id="statK">0</span></div>
+        <div><span class="label">Walks</span><span id="statBb">0</span></div>
+        <div><span class="label">HBP</span><span id="statHbp">0</span></div>
+        <div><span class="label">Hits</span><span id="statHits">0</span></div>
+        <div><span class="label">Batters faced</span><span id="statBf">0</span></div>
+        <div><span class="label">IP</span><span id="statIp">0.0</span></div>
+        <div><span class="label">Runs (logged)</span><span id="statRuns">—</span></div>
+      </div>
+      <h2>Location reads</h2>
+      <div id="insightBox"></div>
+      <h2>Per inning</h2>
+      <div class="stats-list" id="inningSplits"></div>
+      <h2>Recent events</h2>
+      <div class="event-log" id="eventLog"></div>
+      <div class="sheet-actions">
+        <button type="button" data-close="statsSheet">Close</button>
+      </div>
     </div>
+  </div>
 
-    <script>
-        // Load data
-        let s = parseInt(localStorage.getItem('s')) || 0;
-        let b = parseInt(localStorage.getItem('b')) || 0;
-        let ts = parseInt(localStorage.getItem('ts')) || 0;
-        let tb = parseInt(localStorage.getItem('tb')) || 0;
-        let h = parseInt(localStorage.getItem('h')) || 0;
-        let ip = parseFloat(localStorage.getItem('ip')) || 0;
-        let so = parseInt(localStorage.getItem('so')) || 0;
-        let bb = parseInt(localStorage.getItem('bb')) || 0;
+  <!-- Menu -->
+  <div class="sheet-backdrop" id="menuSheet" role="dialog" aria-modal="true">
+    <div class="sheet">
+      <h2>Menu</h2>
+      <p class="hint">Export anytime. This app keeps one active game on this device.</p>
+      <div class="menu-list">
+        <button type="button" id="exportSummary">Export summary CSV</button>
+        <button type="button" id="exportDetail">Export pitch/event CSV</button>
+        <button type="button" id="exportJson">Export JSON backup</button>
+        <label class="file-btn">Import JSON backup
+          <input class="hidden-file" id="importJson" type="file" accept="application/json,.json">
+        </label>
+      </div>
+      <h2 style="margin-top:16px">Colors</h2>
+      <div class="theme-row">
+        <label>Accent <input type="color" id="themeAccent"></label>
+        <label>Ball <input type="color" id="themeBall"></label>
+        <label>Strike <input type="color" id="themeStrike"></label>
+        <label>&nbsp;<button type="button" id="themeReset" style="min-height:44px;width:100%;border-radius:10px;border:1px solid var(--line);font-weight:700;background:var(--bg-2)">Reset theme</button></label>
+      </div>
+      <div class="menu-list">
+        <button type="button" class="danger" id="resetGame">Reset game…</button>
+        <button type="button" data-close="menuSheet">Close</button>
+      </div>
+    </div>
+  </div>
 
-        document.getElementById('homeTeam').value = localStorage.getItem('homeTeam') || '';
-        document.getElementById('homeScore').value = localStorage.getItem('homeScore') || '';
-        document.getElementById('awayTeam').value = localStorage.getItem('awayTeam') || '';
-        document.getElementById('awayScore').value = localStorage.getItem('awayScore') || '';
-
-        function update() {
-            document.getElementById('s').innerText = s;
-            document.getElementById('b').innerText = b;
-            document.getElementById('ts').innerText = ts;
-            document.getElementById('tb').innerText = tb;
-            document.getElementById('h').innerText = h;
-            document.getElementById('ip').innerText = ip.toFixed(1);
-            document.getElementById('so').innerText = so;
-            document.getElementById('bb').innerText = bb;
-            saveData();
-        }
-
-        function saveData() {
-            localStorage.setItem('s', s); localStorage.setItem('b', b);
-            localStorage.setItem('ts', ts); localStorage.setItem('tb', tb);
-            localStorage.setItem('h', h); localStorage.setItem('ip', ip);
-            localStorage.setItem('so', so); localStorage.setItem('bb', bb);
-            localStorage.setItem('homeTeam', document.getElementById('homeTeam').value);
-            localStorage.setItem('homeScore', document.getElementById('homeScore').value);
-            localStorage.setItem('awayTeam', document.getElementById('awayTeam').value);
-            localStorage.setItem('awayScore', document.getElementById('awayScore').value);
-        }
-
-        function add(type) {
-            if(type === 's') { s++; ts++; if(s >= 3) { so++; s=0; b=0; } }
-            else if(type === 'b') { b++; tb++; if(b >= 4) { bb++; s=0; b=0; } }
-            else if(type === 'h') { h++; s=0; b=0; }
-            else if(type === 'ip') { ip += 0.33; }
-            update();
-        }
-
-        function reset() { 
-            if(confirm("Reset all stats?")) {
-                localStorage.clear();
-                location.reload();
-            }
-        }
-
-        function exportData() {
-            const hTeam = document.getElementById('homeTeam').value || "Home";
-            const hScore = document.getElementById('homeScore').value || "0";
-            const aTeam = document.getElementById('awayTeam').value || "Away";
-            const aScore = document.getElementById('awayScore').value || "0";
-            const data = [
-                ["Teams", hTeam + " vs " + aTeam],
-                ["Score", hScore + " - " + aScore],
-                ["Stat", "Value"],
-                ["Total Strikes", ts], ["Total Balls", tb],
-                ["Hits", h], ["Innings", ip.toFixed(1)],
-                ["Strikeouts", so], ["Walks", bb]
-            ];
-            let csvContent = "data:text/csv;charset=utf-8," + data.map(e => e.join(",")).join("\n");
-            const link = document.createElement("a");
-            link.setAttribute("href", encodeURI(csvContent));
-            link.setAttribute("download", "pitch_data.csv");
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-        
-        update();
-    </script>
+  <script type="module" src="js/app.js"></script>
 </body>
 </html>
