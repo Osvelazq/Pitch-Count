@@ -6,6 +6,11 @@ import {
   appendPaResult,
   setLastPitchLocation,
   undoLast,
+  undoLastAtBat,
+  deleteEventById,
+  addRecordedOuts,
+  setGameSituation,
+  changePitcher,
   deriveStats,
   deriveLiveState,
   formatInningsPitched,
@@ -154,4 +159,75 @@ test('three outs advance half-inning', () => {
   assert.equal(live.half, 'bottom');
   assert.equal(live.inning, 1);
   assert.equal(deriveStats(g).inningsPitched, '1.0');
+});
+
+test('undo last pitch removes location with it', () => {
+  let g = createGame();
+  g = appendPitch(g, { pitchResult: 'ball' });
+  g = setLastPitchLocation(g, 'LO_OUT');
+  assert.equal(g.events.length, 1);
+  assert.equal(g.events[0].location, 'LO_OUT');
+  g = undoLast(g);
+  assert.equal(g.events.length, 0);
+});
+
+test('undo last at-bat removes pitches and result', () => {
+  let g = createGame();
+  g = appendPitch(g, { pitchResult: 'ball' });
+  g = appendPitch(g, { pitchResult: 'called_strike' });
+  g = appendPitch(g, { pitchResult: 'in_play' });
+  g = appendPaResult(g, { paOutcome: 'single' });
+  g = appendPitch(g, { pitchResult: 'ball' });
+  g = undoLastAtBat(g);
+  // current unfinished AB pitches removed; prior completed AB remains
+  assert.equal(g.events.filter((e) => e.type === 'plate_appearance_result').length, 1);
+  assert.equal(g.events.filter((e) => e.type === 'pitch').length, 3);
+  g = undoLastAtBat(g);
+  assert.equal(g.events.length, 0);
+});
+
+test('delete mid-ab pitch does not rewrite later PA outcomes', () => {
+  let g = createGame();
+  g = appendPitch(g, { pitchResult: 'ball' });
+  const midId = g.events[0].id;
+  g = appendPitch(g, { pitchResult: 'called_strike' });
+  g = appendPitch(g, { pitchResult: 'in_play' });
+  g = appendPaResult(g, { paOutcome: 'single' });
+  g = appendPitch(g, { pitchResult: 'ball' });
+  g = appendPitch(g, { pitchResult: 'ball' });
+  g = appendPitch(g, { pitchResult: 'ball' });
+  g = appendPitch(g, { pitchResult: 'ball' });
+  g = appendPaResult(g, { paOutcome: 'walk' });
+
+  g = deleteEventById(g, midId);
+  const pas = g.events.filter((e) => e.type === 'plate_appearance_result');
+  assert.equal(pas[0].paOutcome, 'single');
+  assert.equal(pas[1].paOutcome, 'walk');
+  assert.equal(deriveStats(g).walks, 1);
+  assert.equal(deriveStats(g).hits, 1);
+});
+
+test('add outs advances IP; set situation does not pad IP', () => {
+  let g = createGame();
+  g = addRecordedOuts(g, 2, 'Double play');
+  assert.equal(deriveStats(g).inningsPitched, '0.2');
+  assert.equal(deriveLiveState(g).outs, 2);
+
+  g = setGameSituation(g, { inning: 5, half: 'bottom', outs: 1 });
+  const live = deriveLiveState(g);
+  assert.equal(live.inning, 5);
+  assert.equal(live.half, 'bottom');
+  assert.equal(live.outs, 1);
+  assert.equal(deriveStats(g).inningsPitched, '0.2');
+});
+
+test('pitcher change stamps later pitches', () => {
+  let g = createGame({ pitcher: 'Alex' });
+  g = appendPitch(g, { pitchResult: 'ball' });
+  assert.equal(g.events[0].pitcherName, 'Alex');
+  g = changePitcher(g, 'Sam');
+  g = appendPitch(g, { pitchResult: 'called_strike' });
+  assert.equal(g.pitcher, 'Sam');
+  assert.equal(g.events.at(-1).pitcherName, 'Sam');
+  assert.equal(deriveLiveState(g).currentPitcher, 'Sam');
 });

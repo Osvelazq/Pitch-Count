@@ -28,7 +28,7 @@ export const PITCH_RESULTS = {
   swinging_strike: { id: 'swinging_strike', label: 'Swinging Strike', countsAs: 'strike' },
   foul: { id: 'foul', label: 'Foul', countsAs: 'foul' },
   in_play: { id: 'in_play', label: 'In Play', countsAs: 'in_play' },
-  unknown: { id: 'unknown', label: 'Unknown', countsAs: 'unknown' },
+  unknown: { id: 'unknown', label: "Didn't see", countsAs: 'unknown' },
 };
 
 export const PA_OUTCOMES = {
@@ -132,12 +132,40 @@ export function deriveLiveState(game) {
         }
       }
     } else if (ev.type === 'manual_adjustment') {
+      if (typeof ev.addOuts === 'number' && ev.addOuts > 0) {
+        outs += Math.min(3, ev.addOuts | 0);
+        while (outs >= 3) {
+          outs -= 3;
+          if (half === 'top') half = 'bottom';
+          else {
+            half = 'top';
+            inning += 1;
+          }
+        }
+      }
       if (typeof ev.balls === 'number') balls = ev.balls;
       if (typeof ev.strikes === 'number') strikes = ev.strikes;
-      if (typeof ev.outs === 'number') outs = ev.outs;
-      if (typeof ev.inning === 'number') inning = ev.inning;
-      if (ev.half === 'top' || ev.half === 'bottom') half = ev.half;
-      if (ev.clearPending) pendingPa = null;
+      // setOuts / setInning / setHalf change game situation only (no IP padding)
+      if (typeof ev.setOuts === 'number') outs = Math.max(0, Math.min(2, ev.setOuts | 0));
+      else if (typeof ev.outs === 'number') outs = ev.outs;
+      if (typeof ev.setInning === 'number') inning = Math.max(1, ev.setInning | 0);
+      else if (typeof ev.inning === 'number') inning = ev.inning;
+      if (ev.setHalf === 'top' || ev.setHalf === 'bottom') half = ev.setHalf;
+      else if (ev.half === 'top' || ev.half === 'bottom') half = ev.half;
+      if (ev.clearPending) {
+        pendingPa = null;
+        balls = typeof ev.balls === 'number' ? ev.balls : 0;
+        strikes = typeof ev.strikes === 'number' ? ev.strikes : 0;
+        pitchesThisPa = 0;
+      }
+      if (ev.resetCount) {
+        balls = 0;
+        strikes = 0;
+        pitchesThisPa = 0;
+        pendingPa = null;
+      }
+    } else if (ev.type === 'pitcher_change') {
+      // Live pitcher name is tracked separately; no count impact.
     }
   }
 
@@ -151,7 +179,16 @@ export function deriveLiveState(game) {
     pendingPa,
     pitchesThisPa,
     outsRecorded: countOutsRecorded(game),
+    currentPitcher: currentPitcherName(game),
   };
+}
+
+function currentPitcherName(game) {
+  let name = game.pitcher || '';
+  for (const ev of game.events || []) {
+    if (ev.type === 'pitcher_change' && ev.pitcherName) name = ev.pitcherName;
+  }
+  return name;
 }
 
 function countOutsRecorded(game) {
@@ -159,6 +196,8 @@ function countOutsRecorded(game) {
   for (const ev of game.events || []) {
     if (ev.type === 'plate_appearance_result') {
       total += Math.max(0, Math.min(3, ev.outsOnPlay | 0));
+    } else if (ev.type === 'manual_adjustment' && typeof ev.addOuts === 'number') {
+      total += Math.max(0, Math.min(3, ev.addOuts | 0));
     }
   }
   return total;
@@ -385,12 +424,47 @@ export function describeEvent(ev) {
     if (typeof ev.runsOnPlay === 'number' && ev.runsOnPlay > 0) bits.push(`${ev.runsOnPlay} R`);
     return bits.join(' · ');
   }
-  if (ev.type === 'manual_adjustment') return ev.notes || 'Adjustment';
+  if (ev.type === 'manual_adjustment') {
+    if (ev.addOuts) return ev.notes || `+${ev.addOuts} out${ev.addOuts === 1 ? '' : 's'}`;
+    if (ev.setInning || ev.setHalf || typeof ev.setOuts === 'number') {
+      const inn = ev.setInning != null ? ev.setInning : '?';
+      const hf = ev.setHalf === 'bottom' ? '▼' : ev.setHalf === 'top' ? '▲' : '';
+      const o = typeof ev.setOuts === 'number' ? ` · ${ev.setOuts} out` : '';
+      return ev.notes || `Set ${inn}${hf}${o}`;
+    }
+    return ev.notes || 'Adjustment';
+  }
+  if (ev.type === 'pitcher_change') return `Pitcher: ${ev.pitcherName || '—'}`;
   return ev.type;
 }
 
 function touchUpdated(game) {
   return { ...game, updatedAt: new Date().toISOString() };
+}
+
+function nextSequence(game) {
+  return (game.events?.length || 0) + 1;
+}
+
+function baseEvent(game, live, type, extra = {}) {
+  return {
+    id: uid('ev'),
+    sequence: nextSequence(game),
+    timestamp: new Date().toISOString(),
+    inning: live.inning,
+    half: live.half,
+    batterSequence: live.batterSequence,
+    pitcherName: live.currentPitcher || game.pitcher || null,
+    type,
+    pitchResult: null,
+    pitchType: null,
+    location: null,
+    paOutcome: null,
+    outsOnPlay: null,
+    runsOnPlay: null,
+    notes: null,
+    ...extra,
+  };
 }
 
 export function appendPitch(game, { pitchResult, location = null, pitchType = null, notes = null }) {
@@ -403,22 +477,12 @@ export function appendPitch(game, { pitchResult, location = null, pitchType = nu
     throw new Error('Resolve the ball in play before logging another pitch');
   }
 
-  const ev = {
-    id: uid('ev'),
-    sequence: (game.events?.length || 0) + 1,
-    timestamp: new Date().toISOString(),
-    inning: live.inning,
-    half: live.half,
-    batterSequence: live.batterSequence,
-    type: 'pitch',
+  const ev = baseEvent(game, live, 'pitch', {
     pitchResult,
     pitchType: pitchType || null,
     location: location || null,
-    paOutcome: null,
-    outsOnPlay: null,
-    runsOnPlay: null,
     notes: notes || null,
-  };
+  });
 
   return touchUpdated({ ...game, events: [...(game.events || []), ev] });
 }
@@ -457,26 +521,15 @@ export function appendPaResult(
   const runs =
     runsOnPlay == null || runsOnPlay === '' ? null : Math.max(0, Math.min(20, Number(runsOnPlay)));
 
-  const ev = {
-    id: uid('ev'),
-    sequence: (game.events?.length || 0) + 1,
-    timestamp: new Date().toISOString(),
-    inning: live.inning,
-    half: live.half,
-    batterSequence: live.batterSequence,
-    type: 'plate_appearance_result',
-    pitchResult: null,
-    pitchType: null,
-    location: null,
+  const ev = baseEvent(game, live, 'plate_appearance_result', {
     paOutcome,
     outsOnPlay: outs,
     runsOnPlay: Number.isFinite(runs) ? runs : null,
     notes: notes || null,
-  };
+  });
 
   let next = touchUpdated({ ...game, events: [...(game.events || []), ev] });
   if (Number.isFinite(runs) && runs > 0) {
-    // Attribute runs to the batting side for this half
     if (live.half === 'top') {
       next = { ...next, awayScore: (next.awayScore | 0) + runs };
     } else {
@@ -486,13 +539,51 @@ export function appendPaResult(
   return next;
 }
 
-export function undoLast(game) {
-  const events = game.events || [];
-  if (!events.length) return game;
-  const removed = events[events.length - 1];
-  let next = touchUpdated({ ...game, events: events.slice(0, -1) });
+/** Record outs that count toward IP (e.g. +Out, double play) without a full PA. */
+export function addRecordedOuts(game, n, notes = null) {
+  const count = Math.max(1, Math.min(3, n | 0));
+  const live = deriveLiveState(game);
+  const ev = baseEvent(game, live, 'manual_adjustment', {
+    addOuts: count,
+    notes: notes || (count === 2 ? 'Double play' : count === 3 ? 'Triple play' : '+1 out'),
+    clearPending: true,
+    resetCount: true,
+  });
+  return touchUpdated({ ...game, events: [...(game.events || []), ev] });
+}
 
-  // If undoing a PA that added runs to the scoreboard, reverse that bump
+/**
+ * Set inning / half / outs for when a pitcher enters mid-game.
+ * Does NOT pad outsRecorded / IP.
+ */
+export function setGameSituation(game, { inning, half, outs, notes = null } = {}) {
+  const live = deriveLiveState(game);
+  const ev = baseEvent(game, live, 'manual_adjustment', {
+    setInning: inning != null ? Math.max(1, inning | 0) : live.inning,
+    setHalf: half === 'bottom' || half === 'top' ? half : live.half,
+    setOuts: outs != null ? Math.max(0, Math.min(2, outs | 0)) : live.outs,
+    notes: notes || 'Set game situation',
+  });
+  return touchUpdated({ ...game, events: [...(game.events || []), ev] });
+}
+
+export function changePitcher(game, pitcherName) {
+  const name = String(pitcherName || '').trim();
+  if (!name) throw new Error('Pitcher name required');
+  const live = deriveLiveState(game);
+  const ev = baseEvent(game, live, 'pitcher_change', {
+    pitcherName: name,
+    notes: `Pitching change: ${name}`,
+  });
+  return touchUpdated({
+    ...game,
+    pitcher: name,
+    events: [...(game.events || []), ev],
+  });
+}
+
+function reverseRunsForEvent(game, removed) {
+  let next = game;
   if (
     removed.type === 'plate_appearance_result' &&
     typeof removed.runsOnPlay === 'number' &&
@@ -505,6 +596,90 @@ export function undoLast(game) {
     }
   }
   return next;
+}
+
+function resequence(events) {
+  return events.map((ev, i) => ({ ...ev, sequence: i + 1 }));
+}
+
+/** Undo the tip of the log — a full pitch (incl. zone) or whatever last event was. */
+export function undoLast(game) {
+  const events = game.events || [];
+  if (!events.length) return game;
+  const removed = events[events.length - 1];
+  let next = { ...game, events: events.slice(0, -1) };
+  next = reverseRunsForEvent(next, removed);
+  return touchUpdated(next);
+}
+
+/**
+ * Undo the entire current/last at-bat: PA result (if any) plus its pitches.
+ * Harder-to-reach corrective action.
+ */
+export function undoLastAtBat(game) {
+  const events = [...(game.events || [])];
+  if (!events.length) return game;
+
+  let i = events.length - 1;
+  // Skip trailing non-PA noise (outs / situation) only if we haven't hit PA/pitch yet? 
+  // Prefer: find last PA or last pitch group.
+  while (i >= 0 && events[i].type !== 'plate_appearance_result' && events[i].type !== 'pitch') {
+    i -= 1;
+  }
+  if (i < 0) return undoLast(game);
+
+  let removed = [];
+  if (events[i].type === 'plate_appearance_result') {
+    const batter = events[i].batterSequence;
+    const cut = [];
+    // remove PA and preceding pitches for same batterSequence
+    let j = i;
+    while (j >= 0) {
+      const ev = events[j];
+      if (ev.type === 'plate_appearance_result' && ev.batterSequence === batter && j === i) {
+        cut.push(ev);
+        j -= 1;
+        continue;
+      }
+      if (ev.type === 'pitch' && ev.batterSequence === batter) {
+        cut.push(ev);
+        j -= 1;
+        continue;
+      }
+      break;
+    }
+    removed = cut;
+    const keep = [...events.slice(0, j + 1), ...events.slice(i + 1)];
+    let next = { ...game, events: resequence(keep) };
+    for (const r of removed) next = reverseRunsForEvent(next, r);
+    return touchUpdated(next);
+  }
+
+  // No PA yet — remove pitches for current batterSequence only
+  const batter = events[i].batterSequence;
+  let j = i;
+  const cut = [];
+  while (j >= 0 && events[j].type === 'pitch' && events[j].batterSequence === batter) {
+    cut.push(events[j]);
+    j -= 1;
+  }
+  const keep = [...events.slice(0, j + 1), ...events.slice(i + 1)];
+  return touchUpdated({ ...game, events: resequence(keep) });
+}
+
+/**
+ * Delete a single event by id. Later events stay; live totals re-derive.
+ * Does not rewrite other batters' stored outcomes.
+ */
+export function deleteEventById(game, eventId) {
+  const events = game.events || [];
+  const idx = events.findIndex((e) => e.id === eventId);
+  if (idx < 0) return game;
+  const removed = events[idx];
+  const keep = events.filter((e) => e.id !== eventId);
+  let next = { ...game, events: resequence(keep) };
+  next = reverseRunsForEvent(next, removed);
+  return touchUpdated(next);
 }
 
 export function updateMeta(game, patch) {
@@ -667,6 +842,7 @@ export const DETAIL_CSV_HEADERS = [
   'inning',
   'half',
   'batterSequence',
+  'eventPitcher',
   'type',
   'pitchResult',
   'pitchType',
@@ -694,6 +870,7 @@ export function buildDetailCsv(game) {
       ev.inning,
       ev.half,
       ev.batterSequence,
+      ev.pitcherName || game.pitcher || '',
       ev.type,
       ev.pitchResult || '',
       ev.pitchType || '',
