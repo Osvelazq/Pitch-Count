@@ -28,7 +28,7 @@ export const PITCH_RESULTS = {
   swinging_strike: { id: 'swinging_strike', label: 'Swinging Strike', countsAs: 'strike' },
   foul: { id: 'foul', label: 'Foul', countsAs: 'foul' },
   in_play: { id: 'in_play', label: 'In Play', countsAs: 'in_play' },
-  unknown: { id: 'unknown', label: 'Unknown', countsAs: 'unknown' },
+  unknown: { id: 'unknown', label: "Didn't see", countsAs: 'unknown' },
 };
 
 export const PA_OUTCOMES = {

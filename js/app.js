@@ -98,10 +98,28 @@ function applySettingsUi() {
   $('simpleToggle').textContent = settings.simpleMode ? 'Simple ✓' : 'Simple';
   $('settingSimple').checked = Boolean(settings.simpleMode);
   $('settingAutoKbb').checked = Boolean(settings.autoConfirmKbb);
-  $('modeHint').textContent = settings.simpleMode
-    ? 'Simple · pitches & at-bats'
-    : 'One-tap from the stands';
+  $('modeHint').textContent = settings.simpleMode ? 'Simple mode' : 'Live track';
   $('locateBtn').hidden = Boolean(settings.simpleMode);
+}
+
+function updateSetupSummary() {
+  const p = game.pitcher || 'No pitcher';
+  const h = game.homeTeam || 'Home';
+  const a = game.awayTeam || 'Away';
+  $('setupSummary').textContent = `${p} · ${h} ${game.homeScore ?? 0}–${game.awayScore ?? 0} ${a}`;
+}
+
+function hideOutsChooser() {
+  const chooser = $('outsChooser');
+  if (chooser) chooser.hidden = true;
+  const grid = $('paGrid');
+  if (grid) grid.hidden = false;
+}
+
+function showOutsChooser() {
+  $('outsChooser').hidden = false;
+  $('paGrid').hidden = true;
+  $('pendingHint').textContent = 'Out recorded on the play — choose how many outs.';
 }
 
 function persist() {
@@ -195,6 +213,7 @@ function render() {
   $('homeRuns').textContent = game.homeScore ?? 0;
   $('awayRuns').textContent = game.awayScore ?? 0;
   $('lastEvent').textContent = describeEvent(last);
+  updateSetupSummary();
 
   $('statPitches').textContent = stats.totalPitches;
   $('statStrikePct').textContent = stats.strikePct == null ? '—' : `${stats.strikePct}%`;
@@ -235,19 +254,33 @@ function render() {
   const pending = live.pendingPa;
   const pendingEl = $('pendingPanel');
   const forceShow = pendingEl.dataset.force === '1';
-  if (pending || forceShow) {
+  const choosingOuts = !$('outsChooser').hidden;
+  if (pending || forceShow || choosingOuts) {
     pendingEl.classList.add('show');
     const titles = {
-      strikeout: '3 strikes — confirm outcome',
-      walk: '4 balls — confirm outcome',
-      in_play: 'Ball in play — pick result',
+      strikeout: '3 strikes — confirm',
+      walk: '4 balls — confirm',
+      in_play: 'Ball in play — result',
     };
-    $('pendingTitle').textContent = pending
-      ? titles[pending] || 'Plate appearance result'
-      : 'End plate appearance';
-    highlightSuggested(pending);
+    const hints = {
+      strikeout: 'Usually a strikeout. Change if needed.',
+      walk: 'Usually a walk. Change if needed.',
+      in_play: 'Hit, out, error, or something else?',
+    };
+    if (choosingOuts) {
+      $('pendingTitle').textContent = 'Outs on the play';
+    } else {
+      $('pendingTitle').textContent = pending
+        ? titles[pending] || 'Result needed'
+        : 'End at-bat';
+      $('pendingHint').textContent = pending
+        ? hints[pending] || 'Pick how the at-bat ended.'
+        : 'Pick how the at-bat ended.';
+    }
+    if (!choosingOuts) highlightSuggested(pending);
   } else {
     pendingEl.classList.remove('show');
+    hideOutsChooser();
   }
 
   const blocked = Boolean(pending);
@@ -260,13 +293,11 @@ function render() {
 
 function highlightSuggested(pending) {
   document.querySelectorAll('[data-pa]').forEach((btn) => {
-    const isDp = btn.dataset.outs === '2';
     btn.classList.toggle(
       'primary',
-      !isDp &&
-        ((pending === 'strikeout' && btn.dataset.pa === 'strikeout') ||
-          (pending === 'walk' && btn.dataset.pa === 'walk') ||
-          (pending === 'in_play' && btn.dataset.pa === 'out'))
+      (pending === 'strikeout' && btn.dataset.pa === 'strikeout') ||
+        (pending === 'walk' && btn.dataset.pa === 'walk') ||
+        (pending === 'in_play' && btn.dataset.pa === 'out')
     );
   });
 }
@@ -307,9 +338,10 @@ function onPitch(result) {
       swinging_strike: 'Swing',
       foul: 'Foul',
       in_play: 'In play',
-      unknown: 'Missed',
+      unknown: "Didn't see",
     };
     if (maybeAutoConfirm()) {
+      hideOutsChooser();
       render();
       persist();
       return;
@@ -322,6 +354,15 @@ function onPitch(result) {
 
 function onPa(outcome, outsOverride = null) {
   if (!canTap()) return;
+
+  // Out needs an outs-count step (1 / 2 / 3) instead of a cryptic DP button
+  if (outcome === 'out' && outsOverride == null) {
+    $('pendingPanel').dataset.force = '1';
+    $('pendingPanel').classList.add('show');
+    showOutsChooser();
+    return;
+  }
+
   lockTap();
   try {
     const outsDefault =
@@ -333,7 +374,12 @@ function onPa(outcome, outsOverride = null) {
     });
     runsForNextPa = 0;
     $('pendingPanel').dataset.force = '';
-    flash(outsOverride === 2 ? 'DP' : PA_OUTCOMES[outcome]?.short || outcome);
+    hideOutsChooser();
+    const flashLabel =
+      outcome === 'out' && outsOverride
+        ? `${outsOverride} out${outsOverride === 1 ? '' : 's'}`
+        : PA_OUTCOMES[outcome]?.short || outcome;
+    flash(flashLabel);
     render();
     persist();
   } catch (err) {
@@ -366,6 +412,8 @@ function wire() {
     if (!canTap()) return;
     lockTap();
     closeSheet('zoneSheet');
+    hideOutsChooser();
+    $('pendingPanel').dataset.force = '';
     const prev = lastEvent(game);
     game = undoLast(game);
     flash(prev?.type === 'pitch' ? 'Pitch undone' : 'Undone');
@@ -375,6 +423,7 @@ function wire() {
 
   $('undoAtBatBtn').addEventListener('click', () => {
     if (!confirm('Undo the entire last at-bat (pitches + result)?')) return;
+    hideOutsChooser();
     game = undoLastAtBat(game);
     flash('At-bat undone');
     render();
@@ -385,18 +434,32 @@ function wire() {
     if (!canTap()) return;
     lockTap();
     game = addRecordedOuts(game, 1, '+1 out');
-    flash('+ Out');
+    flash('+1 out');
     render();
     persist();
   });
 
-  $('doublePlayBtn').addEventListener('click', () => {
+  $('plusTwoOutsBtn').addEventListener('click', () => {
     if (!canTap()) return;
     lockTap();
-    game = addRecordedOuts(game, 2, 'Double play');
-    flash('DP');
+    game = addRecordedOuts(game, 2, '+2 outs');
+    flash('+2 outs');
     render();
     persist();
+  });
+
+  document.querySelectorAll('[data-choose-outs]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const n = parseInt(btn.dataset.chooseOuts, 10);
+      onPa('out', n);
+    });
+  });
+
+  $('outsChooserCancel').addEventListener('click', () => {
+    hideOutsChooser();
+    const live = deriveLiveState(game);
+    if (!live.pendingPa) $('pendingPanel').dataset.force = '';
+    render();
   });
 
   $('situationBtn').addEventListener('click', () => {

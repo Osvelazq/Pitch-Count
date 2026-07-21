@@ -1,4 +1,4 @@
-const CACHE = 'pitch-tracker-v3';
+const CACHE = 'pitch-tracker-v4';
 const ASSETS = [
   './',
   './index.html',
