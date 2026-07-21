@@ -5,16 +5,20 @@ Phone-first softball pitch tracker PWA for logging from the stands. Static files
 ## Use
 
 1. Open `index.html` (or your Pages URL).
-2. Tap **Ball / Called / Swing / Foul / In Play** (or **Unknown**).
-3. Optionally pin a **zone** (catcher’s view) and pitch type when you saw it clearly — skip otherwise.
-4. Confirm plate-appearance results when prompted (or use **End AB**).
-5. **Undo** is one tap. Export summary CSV, detail CSV, or JSON from **Menu**.
+2. Tap **Simple** for a pitch/at-bat focused layout (no zone popup).
+3. Tap **Ball / Called / Swing / Foul / In Play / Missed**.
+4. Optionally tap **Zone** (full mode) when you saw location clearly.
+5. Confirm plate-appearance results when prompted (or enable auto-confirm K/BB in Menu).
+6. Use **+ Out** / **DP** for defensive outs; **Set inning…** when your pitcher enters mid-game (does not pad IP).
+7. **Undo** reverses the last event (a full pitch including zone). **Undo whole at-bat** lives under Stats. Delete individual events from the log with confirm.
+8. Export summary CSV, detail CSV, or JSON from Menu.
 
 ## Data
 
 - Append-only event log in `localStorage` (`pitchTracker.v2`).
-- Innings pitched from outs: `0.0`, `0.1`, `0.2`, `1.0`, …
-- Zone insights (e.g. “Most balls were low outside”) when locations are logged.
+- Settings (simple mode, auto K/BB) in `pitchTracker.settings`.
+- Innings pitched from recorded outs only: `0.0`, `0.1`, `0.2`, `1.0`, …
+- Setting game situation does not invent outs for IP.
 - Legacy v1 counter keys are migrated once into a v2 game.
 
 ## Develop
@@ -23,4 +27,4 @@ Phone-first softball pitch tracker PWA for logging from the stands. Static files
 npm test
 ```
 
-No build step. Service worker: `sw.js` (`pitch-tracker-v2`).
+No build step. Service worker: `sw.js` (`pitch-tracker-v3`).

@@ -15,12 +15,15 @@
     <header class="topbar">
       <div class="brand">
         <h1>Pitch Tracker</h1>
-        <p>One-tap from the stands</p>
+        <p id="modeHint">One-tap from the stands</p>
       </div>
-      <button type="button" class="icon-btn" id="menuBtn" aria-label="Menu">Menu</button>
+      <div class="topbar-actions">
+        <button type="button" class="icon-btn" id="simpleToggle" aria-pressed="false">Simple</button>
+        <button type="button" class="icon-btn" id="menuBtn" aria-label="Menu">Menu</button>
+      </div>
     </header>
 
-    <section class="panel">
+    <section class="panel" id="metaPanel">
       <div class="meta-grid">
         <label class="span-2">Pitcher
           <input id="pitcher" type="text" autocomplete="off" placeholder="Pitcher name">
@@ -49,6 +52,10 @@
           <div class="runs" id="awayRuns">0</div>
         </div>
       </div>
+      <div class="pitcher-row">
+        <span class="muted">Active: <strong id="activePitcherLabel">—</strong></span>
+        <button type="button" class="text-btn" id="changePitcherBtn">Change pitcher</button>
+      </div>
     </section>
 
     <div class="live-track">
@@ -72,6 +79,11 @@
           </div>
         </div>
         <div class="last-event">Last: <strong id="lastEvent">—</strong> · IP <strong id="ipVal">0.0</strong></div>
+        <div class="quick-outs" id="quickOuts">
+          <button type="button" id="plusOutBtn">+ Out</button>
+          <button type="button" id="doublePlayBtn">DP (2 outs)</button>
+          <button type="button" id="situationBtn">Set inning…</button>
+        </div>
       </section>
 
       <section class="panel pending" id="pendingPanel">
@@ -81,6 +93,7 @@
           <button type="button" data-pa="walk">BB</button>
           <button type="button" data-pa="hbp">HBP</button>
           <button type="button" data-pa="out">Out</button>
+          <button type="button" data-pa="out" data-outs="2" id="paDpBtn">DP</button>
           <button type="button" data-pa="single">1B</button>
           <button type="button" data-pa="double">2B</button>
           <button type="button" data-pa="triple">3B</button>
@@ -90,7 +103,7 @@
           <button type="button" data-pa="sacrifice">SAC</button>
         </div>
         <div class="runs-row">
-          <span>Runs on play (optional)</span>
+          <span>Run scored? (optional)</span>
           <div class="runs-controls">
             <button type="button" id="runsMinus" aria-label="Fewer runs">−</button>
             <output id="runsOut">0</output>
@@ -106,15 +119,15 @@
           <button type="button" class="swing" data-pitch="swinging_strike">SWING</button>
           <button type="button" class="foul" data-pitch="foul">FOUL</button>
           <button type="button" class="inplay" data-pitch="in_play">IN PLAY</button>
-          <button type="button" class="unknown" data-pitch="unknown">UNKNOWN</button>
+          <button type="button" class="unknown" data-pitch="unknown">MISSED</button>
         </div>
         <div class="actions">
           <button type="button" class="undo" id="undoBtn">Undo</button>
           <button type="button" id="endAbBtn">End AB</button>
-          <button type="button" id="locateBtn">Zone</button>
+          <button type="button" id="locateBtn" class="full-only">Zone</button>
         </div>
-        <div class="actions" style="grid-template-columns:1fr 1fr;margin-top:8px">
-          <button type="button" id="statsBtn">Stats</button>
+        <div class="actions secondary-actions">
+          <button type="button" id="statsBtn">Stats / edit</button>
           <button type="button" id="menuBtn2">Export</button>
         </div>
       </section>
@@ -123,22 +136,51 @@
 
   <div class="flash" id="flash" role="status" aria-live="polite"></div>
 
-  <!-- Zone / optional detail -->
+  <!-- Zone / optional detail (manual only; never auto in simple mode) -->
   <div class="sheet-backdrop" id="zoneSheet" role="dialog" aria-modal="true" aria-labelledby="zoneTitle">
     <div class="sheet">
       <h2 id="zoneTitle">Where was it?</h2>
-      <p class="hint">Catcher’s view. Skip if you didn’t see it clearly.</p>
+      <p class="hint">Catcher’s view. Only for pitches you saw clearly — attaches to the last pitch.</p>
       <div class="zone-grid" id="zoneGrid"></div>
       <p class="hint">Pitch type (optional)</p>
       <div class="type-row" id="typeRow"></div>
       <div class="sheet-actions">
-        <button type="button" id="zoneSkip">Skip</button>
         <button type="button" data-close="zoneSheet">Close</button>
       </div>
     </div>
   </div>
 
-  <!-- Stats -->
+  <!-- Set situation -->
+  <div class="sheet-backdrop" id="situationSheet" role="dialog" aria-modal="true">
+    <div class="sheet">
+      <h2>Set game situation</h2>
+      <p class="hint">For when your pitcher enters mid-game. Does not pad innings pitched.</p>
+      <div class="meta-grid">
+        <label>Inning
+          <input id="sitInning" type="number" inputmode="numeric" min="1" max="20" value="1">
+        </label>
+        <label>Half
+          <select id="sitHalf">
+            <option value="top">Top ▲</option>
+            <option value="bottom">Bottom ▼</option>
+          </select>
+        </label>
+        <label class="span-2">Outs
+          <select id="sitOuts">
+            <option value="0">0</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+          </select>
+        </label>
+      </div>
+      <div class="sheet-actions" style="margin-top:12px">
+        <button type="button" data-close="situationSheet">Cancel</button>
+        <button type="button" class="primary-sheet" id="sitApply">Apply</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats + editable log -->
   <div class="sheet-backdrop" id="statsSheet" role="dialog" aria-modal="true">
     <div class="sheet">
       <h2>Game stats</h2>
@@ -155,12 +197,16 @@
         <div><span class="label">IP</span><span id="statIp">0.0</span></div>
         <div><span class="label">Runs (logged)</span><span id="statRuns">—</span></div>
       </div>
-      <h2>Location reads</h2>
-      <div id="insightBox"></div>
+      <h2 class="full-only">Location reads</h2>
+      <div id="insightBox" class="full-only"></div>
       <h2>Per inning</h2>
       <div class="stats-list" id="inningSplits"></div>
-      <h2>Recent events</h2>
+      <h2>Event log</h2>
+      <p class="hint">Delete a pitch or result without rewriting later at-bats. Confirm required.</p>
       <div class="event-log" id="eventLog"></div>
+      <div class="menu-list" style="margin-top:12px">
+        <button type="button" class="danger" id="undoAtBatBtn">Undo whole at-bat…</button>
+      </div>
       <div class="sheet-actions">
         <button type="button" data-close="statsSheet">Close</button>
       </div>
@@ -171,8 +217,22 @@
   <div class="sheet-backdrop" id="menuSheet" role="dialog" aria-modal="true">
     <div class="sheet">
       <h2>Menu</h2>
-      <p class="hint">Export anytime. This app keeps one active game on this device.</p>
-      <div class="menu-list">
+      <p class="hint">One active game on this device. Export anytime.</p>
+
+      <h2>Tracking</h2>
+      <div class="toggle-list">
+        <label class="toggle-row">
+          <span>Simple mode</span>
+          <input type="checkbox" id="settingSimple">
+        </label>
+        <label class="toggle-row">
+          <span>Auto-confirm K / BB</span>
+          <input type="checkbox" id="settingAutoKbb">
+        </label>
+      </div>
+      <p class="hint">Auto-confirm still logs a PA result; turn off to always tap K or BB yourself.</p>
+
+      <div class="menu-list" style="margin-top:12px">
         <button type="button" id="exportSummary">Export summary CSV</button>
         <button type="button" id="exportDetail">Export pitch/event CSV</button>
         <button type="button" id="exportJson">Export JSON backup</button>
@@ -185,7 +245,7 @@
         <label>Accent <input type="color" id="themeAccent"></label>
         <label>Ball <input type="color" id="themeBall"></label>
         <label>Strike <input type="color" id="themeStrike"></label>
-        <label>&nbsp;<button type="button" id="themeReset" style="min-height:44px;width:100%;border-radius:10px;border:1px solid var(--line);font-weight:700;background:var(--bg-2)">Reset theme</button></label>
+        <label>&nbsp;<button type="button" id="themeReset" class="reset-theme-btn">Reset theme</button></label>
       </div>
       <div class="menu-list">
         <button type="button" class="danger" id="resetGame">Reset game…</button>

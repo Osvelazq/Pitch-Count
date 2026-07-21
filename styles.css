@@ -603,6 +603,149 @@ select {
   }
 }
 
+.topbar-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.topbar-actions .icon-btn[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: transparent;
+}
+
+.pitcher-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 0.85rem;
+}
+
+.pitcher-row .muted {
+  color: var(--muted);
+}
+
+.text-btn {
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font-weight: 700;
+  min-height: 44px;
+  padding: 0 8px;
+}
+
+.quick-outs {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.quick-outs button {
+  min-height: 44px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+  font-weight: 700;
+  font-size: 0.8rem;
+  padding: 6px 4px;
+}
+
+.secondary-actions {
+  grid-template-columns: 1fr 1fr;
+  margin-top: 8px;
+}
+
+.primary-sheet {
+  background: var(--accent) !important;
+  color: var(--accent-ink) !important;
+  border-color: transparent !important;
+}
+
+.toggle-list {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.toggle-row input {
+  width: 22px;
+  height: 22px;
+}
+
+.reset-theme-btn {
+  min-height: 44px;
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  font-weight: 700;
+  background: var(--bg-2);
+}
+
+.event-log .ev-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.event-log .ev-row .meta {
+  flex: 1;
+  text-align: left;
+}
+
+.event-log .ev-row button {
+  min-height: 40px;
+  min-width: 64px;
+  border-radius: 10px;
+  border: 1px solid #e2b4b4;
+  background: #fff5f5;
+  color: #8b1e1e;
+  font-weight: 700;
+  font-size: 0.78rem;
+}
+
+body.simple-mode .full-only,
+body.simple-mode #locateBtn {
+  display: none !important;
+}
+
+body.simple-mode #metaPanel .meta-grid label:not(.span-2) {
+  /* keep pitcher + scores visible-ish; teams stay */
+}
+
+body.simple-mode #modeHint::after {
+  content: none;
+}
+
+#sitHalf,
+#sitOuts {
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: #fafbfa;
+  width: 100%;
+}
+
 @media (orientation: landscape) and (max-height: 500px) {
   .app {
     max-width: 900px;
