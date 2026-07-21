@@ -119,6 +119,7 @@ function hideOutsChooser() {
 function showOutsChooser() {
   $('outsChooser').hidden = false;
   $('paGrid').hidden = true;
+  $('pendingTitle').textContent = 'Outs on the play';
   $('pendingHint').textContent = 'Out recorded on the play — choose how many outs.';
 }
 

@@ -365,6 +365,11 @@ summary {
   gap: 8px;
 }
 
+.pa-grid[hidden],
+.outs-chooser[hidden] {
+  display: none !important;
+}
+
 .pa-grid button {
   min-height: var(--tap);
   border: none;
